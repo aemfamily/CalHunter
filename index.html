@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SmartNutri — Стабильный Дневник КБЖУ</title>
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/2ecc71/ffffff?text=SN">
+    <style>
+        :root {
+            --primary: #2ecc71;
+            --primary-hover: #27ae60;
+            --secondary: #3498db;
+            --secondary-hover: #2980b9;
+            --dark: #2c3e50;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --accent: #e0f2fe;
+            --accent-text: #0369a1;
+            --summary-bg: #f0fdf4;
+            --summary-text: #166534;
+            --summary-border: #bbf7d0;
+            --fiber-color: #854d0e;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            max-width: 900px; margin: 0 auto; padding: 20px; 
+            background: var(--light); color: var(--dark); line-height: 1.5;
+        }
+
+        header { text-align: center; margin-bottom: 25px; padding: 10px 0; }
+        header h1 { font-size: 26px; color: var(--dark); margin-bottom: 5px; }
+        header p { font-size: 14px; color: #7f8c8d; }
+
+        .card { 
+            background: white; padding: 25px; border-radius: 16px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.05); 
+            margin-bottom: 25px; 
+        }
+
+        .card h2 { font-size: 18px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+
+        .upload-container {
+            border: 2px dashed var(--border); padding: 25px; text-align: center;
+            border-radius: 12px; cursor: pointer; background: #fafafa;
+            transition: all 0.2s ease; position: relative;
+        }
+        .upload-container:hover { border-color: var(--secondary); background: #f0f7ff; }
+        .upload-container input[type="file"] {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer; z-index: 2;
+        }
+
+        .preview-box { margin-top: 15px; display: none; position: relative; z-index: 3; }
+        .preview-img { max-width: 100%; max-height: 250px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        input[type="text"], input[type="date"], input[type="number"] {
+            width: 100%; padding: 12px; border: 2px solid var(--border);
+            border-radius: 8px; font-size: 14px; font-family: inherit;
+        }
+        input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus { border-color: var(--secondary); outline: none; }
+
+        .btn { 
+            background: var(--primary); color: white; border: none; padding: 14px 20px; 
+            border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; 
+            font-weight: 600; transition: background 0.2s; box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2);
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-save { background: var(--secondary); box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2); margin-top: 20px; }
+        .btn-save:hover { background: var(--secondary-hover); }
+        
+        .table-responsive { width: 100%; overflow-x: auto; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { background: #f8fafc; font-weight: 600; color: #64748b; }
+
+        .table-input-text { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+        .table-input-num { width: 70px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-size: 14px; }
+        
+        .total-box { background: var(--accent); padding: 20px; border-radius: 12px; margin-top: 20px; font-size: 15px; color: var(--accent-text); }
+        .day-summary-box { background: var(--summary-bg); padding: 20px; border-radius: 12px; margin-bottom: 5px; color: var(--summary-text); border: 1px solid var(--summary-border); }
+        .total-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; text-align: center; }
+        
+        .day-cell, .total-cell { background: white; padding: 12px 10px; border-radius: 8px; border: 1px solid var(--summary-border); }
+        .total-cell { border-color: #bae6fd; }
+        .fiber-cell { border-color: #fef08a; background: #fffdf5; }
+
+        .total-cell span, .day-cell span { display: block; font-size: 11px; color: #64748b; margin-bottom: 2px; }
+        .total-cell strong, .day-cell strong { font-size: 16px; color: var(--dark); }
+        
+        .history-item { background: white; padding: 18px; border-radius: 12px; margin-top: 15px; border-left: 5px solid var(--secondary); box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative; }
+        .history-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #94a3b8; }
+        .history-details { font-size: 14px; color: var(--dark); margin-bottom: 10px; padding-right: 150px; }
+        .history-macros { display: flex; gap: 12px; font-size: 13px; background: #f1f5f9; padding: 6px 12px; border-radius: 6px; width: fit-content; flex-wrap: wrap; }
+        .history-macros .fiber-badge { color: var(--fiber-color); font-weight: 600; }
+
+        .action-btns { position: absolute; right: 15px; bottom: 15px; display: flex; gap: 15px; }
+        .action-btns button { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 500; }
+        .edit-btn { color: var(--secondary); }
+        .delete-btn { color: #ef4444; }
+        
+        .loader { display: none; text-align: center; margin: 15px 0; font-size: 14px; color: var(--secondary); font-weight: 600; }
+        .calendar-nav { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; background: #f1f5f9; padding: 10px 15px; border-radius: 8px; }
+        .calendar-nav label { margin-bottom: 0; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>SmartNutri — Умный Дневник Питания</h1>
+        <p>ИИ-анализ по фото, стабильный пересчет на iPhone без потери фокуса клавиатуры</p>
+    </header>
+
+    <div class="card">
+        <h2>📅 Просмотр дневника за дату</h2>
+        <div class="calendar-nav">
+            <label for="dateSelect">Выбрать день:</label>
+            <input type="date" id="dateSelect" onchange="changeActiveDate()">
+        </div>
+        
+        <div class="day-summary-box">
+            <span style="font-size: 14px;">☀️ Итог за выбранные сутки (<b id="selectedDateLabel"></b>):</span>
+            <div class="total-grid">
+                <div class="day-cell"><span id="dayC">0</span><span>Ккал</span></div>
+                <div class="day-cell"><span id="dayP">0</span><span>Белки (г)</span></div>
+                <div class="day-cell"><span id="dayF">0</span><span>Жиры (г)</span></div>
+                <div class="day-cell"><span id="dayCh">0</span><span>Углев. (г)</span></div>
+                <div class="day-cell fiber-cell"><span id="dayFiber">0</span><span style="color:var(--fiber-color)">Клетч. (г)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 id="formTitle">📷 Анализ нового блюда</h2>
+        <div class="form-group" id="uploadFormGroup">
+            <label>Снимок тарелки или ингредиентов</label>
+            <div class="upload-container">
+                <span id="uploadText">📁 Нажмите для загрузки или перетащите фото сюда</span>
+                <input type="file" id="imageInput" accept="image/*" onchange="handleFileSelect(this)">
+                <div id="previewBox" class="preview-box">
+                    <img id="imagePreview" class="preview-img" alt="Превью блюда">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group" id="hintFormGroup">
+            <label>Текстовая подсказка ИИ (необязательно)</label>
+            <input type="text" id="userHint" placeholder="Пример: Скрэмбл из 3 яиц, чиабатта, пара долек огурца">
+        </div>
+        
+        <button class="btn" id="analyzeBtn" onclick="analyzeFoodImage()">Распознать через реальный ИИ</button>
+        <div id="loadingText" class="loader">🤖 Gemini ИИ сканирует матрицу пикселей, определяет продукты и вычисляет КБЖУ...</div>
+    </div>
+
+    <div id="editArea" class="card" style="display:none;">
+        <h2 id="editAreaTitle">📊 Редактирование параметров разбора</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Название продукта</th>
+                        <th>Вес (г)</th>
+                        <th>Ккал</th>
+                        <th>Белки (г)</th>
+                        <th>Жиры (г)</th>
+                        <th>Углев. (г)</th>
+                        <th style="color: var(--fiber-color)">Клетч. (г)</th>
+                    </tr>
+                </thead>
+                <tbody id="ingredientsBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="total-box">
+            <strong>Итог текущего блюда:</strong>
+            <div class="total-grid">
+                <div class="total-cell"><span id="lblC">0</span><span>Калории</span></div>
+                <div class="total-cell"><span id="lblP">0</span><span>Белки (г)</span></div>
+                <div class="total-cell"><span id="lblF">0</span><span>Жиры (г)</span></div>
+                <div class="total-cell"><span id="lblCh">0</span><span>Углев. (г)</span></div>
+                <div class="total-cell fiber-cell"><span id="lblFiber">0</span><span style="color:var(--fiber-color)">Клетч. (г)</span></div>
+            </div>
+        </div>
+        
+        <button class="btn btn-save" id="saveBtn" onclick="saveToDatabase()">Утвердить и сохранить в дневник</button>
+    </div>
+
+    <div class="card">
+        <h2>🍽️ Приемы пищи за выбранный день</h2>
+        <div id="historyLog">Дневник на этот день пуст.</div>
+    </div>
+
+    <script>
+        // === ВСТАВЬТЕ ВАШ КЛЮЧ GEMINI ИЗ GOOGLE AI STUDIO СЮДА ===
+        const GEMINI_API_KEY = "ВАШ_API_КЛЮЧ"; 
+
+        let currentMealComponents = [];
+        let globalMealsArchive = {}; 
+        let activeDate = "";
+        let editingRecordId = null;
+        let base64ImageString = ""; 
+        let imageMimeType = "image/jpeg";
+
+        window.onload = function() {
+            const today = new Date();
+            const offset = today.getTimezoneOffset();
+            const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+            activeDate = localToday.toISOString().split('T')[0];
+            
+            document.getElementById('dateSelect').value = activeDate;
+            document.getElementById('selectedDateLabel').innerText = formatDateString(activeDate);
+
+            if (localStorage.getItem('mealsGlobalArchive')) {
+                globalMealsArchive = JSON.parse(localStorage.getItem('mealsGlobalArchive'));
+            }
+            refreshDayView();
+        };
+
+        function changeActiveDate() {
+            activeDate = document.getElementById('dateSelect').value;
+            document.getElementById('selectedDateLabel').innerText = formatDateString(activeDate);
+            resetFormState();
+            refreshDayView();
+        }
+
+        function refreshDayView() {
+            renderHistoryLog();
+            calculateDayTotals();
+        }
+
+        function formatDateString(dateStr) {
+            if(!dateStr) return "";
+            const parts = dateStr.split('-');
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1024;
+                    const MAX_HEIGHT = 1024;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    const previewImg = document.getElementById('imagePreview');
+                    previewImg.src = compressedDataUrl;
+                    document.getElementById('previewBox').style.display = 'block';
+                    document.getElementById('uploadText').style.display = 'none';
+                    
+                    base64ImageString = compressedDataUrl.split(',')[1];
+                    imageMimeType = "image/jpeg";
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function analyzeFoodImage() {
+            const fileInput = document.getElementById('imageInput');
+            const userHint = document.getElementById('userHint').value;
+
+            if (!fileInput.files[0] || !base64ImageString) {
+                alert("Пожалуйста, выберите или сфотографируйте блюдо.");
+                return;
+            }
+
+            if (GEMINI_API_KEY === "ВАШ_API_КЛЮЧ" || !GEMINI_API_KEY) {
+                alert("Укажите ваш GEMINI_API_KEY в коде скрипта.");
+                return;
+            }
+
+            document.getElementById('loadingText').style.display = 'block';
+            document.getElementById('editArea').style.display = 'none';
+            editingRecordId = null;
+
+            const promptText = `Ты — профессиональный ИИ-нутрициолог. Проанализируй изображение еды. 
+            Определи все отдельные компоненты, ингредиенты блюда, оцени их примерный вес в граммах на основе визуального объема. 
+            Вычисли калории (calories), белки (protein), жиры (fat), углеводы (carbs) и обязательно клетчатку (fiber) для каждого компонента.
+            Дополнительная контекстная подсказка от пользователя: "${userHint}".
+            Верни ответ СТРОГО в формате валидного JSON-массива объектов, без markdown-разметки вроде \`\`\`json, без лишнего текста вокруг. 
+            Пример структуры:
+            [
+              {"ingredient": "Название", "weight": 120, "calories": 150, "protein": 10.5, "fat": 5, "carbs": 12.2, "fiber": 1.5}
+            ]`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inlineData: { mimeType: imageMimeType, data: base64ImageString } }
+                            ]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || "Ошибка запроса к API");
+
+                let responseText = data.candidates[0].content.parts[0].text.trim();
+                responseText = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+                
+                const rawComponents = JSON.parse(responseText);
+
+                currentMealComponents = rawComponents.map(item => {
+                    const w = Number(item.weight) || 100;
+                    return {
+                        ...item,
+                        baseCaloriesPerGram: Number(item.calories) / w,
+                        baseProteinPerGram: Number(item.protein) / w,
+                        baseFatPerGram: Number(item.fat) / w,
+                        baseCarbsPerGram: Number(item.carbs) / w,
+                        baseFiberPerGram: Number(item.fiber || 0) / w
+                    };
+                });
+
+                document.getElementById('loadingText').style.display = 'none';
+                document.getElementById('editArea').style.display = 'block';
+                document.getElementById('editAreaTitle').innerText = "📊 Редактирование параметров разбора";
+                
+                calculateAndRender();
+
+            } catch (error) {
+                document.getElementById('loadingText').style.display = 'none';
+                alert("Ошибка распознавания ИИ: " + error.message);
+                console.error(error);
+            }
+        }
+
+        // Рендеринг таблицы СТРОГО с фиксированными ID инпутов для прямого обновления
+        function calculateAndRender() {
+            const body = document.getElementById('ingredientsBody');
+            body.innerHTML = '';
+            
+            let totalC = 0, totalP = 0, totalF = 0, totalCh = 0, totalFiber = 0;
+
+            currentMealComponents.forEach((item, index) => {
+                totalC += Number(item.calories || 0);
+                totalP += Number(item.protein || 0);
+                totalF += Number(item.fat || 0);
+                totalCh += Number(item.carbs || 0);
+                totalFiber += Number(item.fiber || 0);
+
+                // Каждому инпуту даем уникальный id, привязаный к индексу, чтобы менять значения точечно
+                body.innerHTML += `
+                    <tr>
+                        <td><input type="text" class="table-input-text" value="${item.ingredient}" oninput="updateComponentProperty(${index}, 'ingredient', this.value)"></td>
+                        <td><input type="number" pattern="[0-9]*" inputmode="numeric" class="table-input-num" value="${item.weight}" oninput="updateComponentWeight(${index}, this.value)"></td>
+                        <td><input type="number" id="row-c-${index}" class="table-input-num" value="${Math.round(item.calories)}" oninput="updateComponentProperty(${index}, 'calories', this.value)"></td>
+                        <td><input type="number" id="row-p-${index}" class="table-input-num" step="0.1" value="${Number(item.protein).toFixed(1)}" oninput="updateComponentProperty(${index}, 'protein', this.value)"></td>
+                        <td><input type="number" id="row-f-${index}" class="table-input-num" step="0.1" value="${Number(item.fat).toFixed(1)}" oninput="updateComponentProperty(${index}, 'fat', this.value)"></td>
+                        <td><input type="number" id="row-ch-${index}" class="table-input-num" step="0.1" value="${Number(item.carbs).toFixed(1)}" oninput="updateComponentProperty(${index}, 'carbs', this.value)"></td>
+                        <td><input type="number" id="row-fiber-${index}" class="table-input-num" step="0.1" value="${Number(item.fiber || 0).toFixed(1)}" oninput="updateComponentProperty(${index}, 'fiber', this.value)"></td>
+                    </tr>
+                `;
+            });
+
+            updateUiTotals(totalC, totalP, totalF, totalCh, totalFiber);
+        }
+
+        // БЕЗОПАСНЫЙ МОБИЛЬНЫЙ ПЕРЕСЧЕТ: Меняет значения в DOM без перерисовки всей таблицы
+        function updateComponentWeight(index, newWeightValue) {
+            if (newWeightValue === '' || Number(newWeightValue) < 0) return;
+            
+            const newWeight = Number(newWeightValue);
+            const item = currentMealComponents[index];
+
+            if (item.baseCaloriesPerGram === undefined) {
+                const currentW = Number(item.weight) || 100;
+                item.baseCaloriesPerGram = Number(item.calories) / currentW;
+                item.baseProteinPerGram = Number(item.protein) / currentW;
+                item.baseFatPerGram = Number(item.fat) / currentW;
+                item.baseCarbsPerGram = Number(item.carbs) / currentW;
+                item.baseFiberPerGram = Number(item.fiber || 0) / currentW;
+            }
+
+            // Обновляем данные в оперативной памяти
+            item.weight = newWeight;
+            item.calories = item.baseCaloriesPerGram * newWeight;
+            item.protein = item.baseProteinPerGram * newWeight;
+            item.fat = item.baseFatPerGram * newWeight;
+            item.carbs = item.baseCarbsPerGram * newWeight;
+            item.fiber = item.baseFiberPerGram * newWeight;
+
+            // Прямое обновление полей в текущей строке без сноса фокуса клавиатуры
+            document.getElementById(`row-c-${index}`).value = Math.round(item.calories);
+            document.getElementById(`row-p-${index}`).value = item.protein.toFixed(1);
+            document.getElementById(`row-f-${index}`).value = item.fat.toFixed(1);
+            document.getElementById(`row-ch-${index}`).value = item.carbs.toFixed(1);
+            document.getElementById(`row-fiber-${index}`).value = item.fiber.toFixed(1);
+
+            // Пересчитываем только финальные общие итоги на плашках
+            recalculateTotalsOnly();
+        }
+
+        function updateComponentProperty(index, property, newValue) {
+            if (property === 'ingredient') {
+                currentMealComponents[index][property] = newValue;
+                return;
+            } 
+            if (newValue === '') return;
+            
+            currentMealComponents[index][property] = Number(newValue);
+            
+            const item = currentMealComponents[index];
+            const currentW = Number(item.weight) || 100;
+            if (property === 'calories') item.baseCaloriesPerGram = item.calories / currentW;
+            if (property === 'protein') item.baseProteinPerGram = item.protein / currentW;
+            if (property === 'fat') item.baseFatPerGram = item.fat / currentW;
+            if (property === 'carbs') item.baseCarbsPerGram = item.carbs / currentW;
+            if (property === 'fiber') item.baseFiberPerGram = item.fiber / currentW;
+
+            recalculateTotalsOnly();
+        }
+
+        function recalculateTotalsOnly() {
+            let totalC = 0, totalP = 0, totalF = 0, totalCh = 0, totalFiber = 0;
+            currentMealComponents.forEach(item => {
+                totalC += Number(item.calories || 0);
+                totalP += Number(item.protein || 0);
+                totalF += Number(item.fat || 0);
+                totalCh += Number(item.carbs || 0);
+                totalFiber += Number(item.fiber || 0);
+            });
+            updateUiTotals(totalC, totalP, totalF, totalCh, totalFiber);
+        }
+
+        function updateUiTotals(c, p, f, ch, fiber) {
+            document.getElementById('lblC').innerHTML = `<strong>${Math.round(c)}</strong>`;
+            document.getElementById('lblP').innerHTML = `<strong>${p.toFixed(1)}</strong>`;
+            document.getElementById('lblF').innerHTML = `<strong>${f.toFixed(1)}</strong>`;
+            document.getElementById('lblCh').innerHTML = `<strong>${ch.toFixed(1)}</strong>`;
+            document.getElementById('lblFiber').innerHTML = `<strong>${fiber.toFixed(1)}</strong>`;
+            
+            currentMealComponents.finalTotals = { 
+                c: Math.round(c), p: Number(p.toFixed(1)), f: Number(f.toFixed(1)), ch: Number(ch.toFixed(1)), fiber: Number(fiber.toFixed(1))
+            };
+        }
+
+        function calculateDayTotals() {
+            let dayC = 0, dayP = 0, dayF = 0, dayCh = 0, dayFiber = 0;
+            const dayMeals = globalMealsArchive[activeDate] || [];
+            
+            dayMeals.forEach(item => {
+                dayC += Number(item.totals.c);
+                dayP += Number(item.totals.p);
+                dayF += Number(item.totals.f);
+                dayCh += Number(item.totals.ch);
+                dayFiber += Number(item.totals.fiber || 0);
+            });
+
+            document.getElementById('dayC').innerHTML = `<strong>${dayC}</strong>`;
+            document.getElementById('dayP').innerHTML = `<strong>${dayP.toFixed(1)}</strong>`;
+            document.getElementById('dayF').innerHTML = `<strong>${dayF.toFixed(1)}</strong>`;
+            document.getElementById('dayCh').innerHTML = `<strong>${dayCh.toFixed(1)}</strong>`;
+            document.getElementById('dayFiber').innerHTML = `<strong>${dayFiber.toFixed(1)}</strong>`;
+        }
+
+        function editMealFromArchive(id) {
+            const dayMeals = globalMealsArchive[activeDate] || [];
+            const targetRecord = dayMeals.find(item => item.id === id);
+            if (!targetRecord) return;
+
+            editingRecordId = id;
+
+            if (targetRecord.rawComponents) {
+                currentMealComponents = JSON.parse(JSON.stringify(targetRecord.rawComponents));
+            } else {
+                currentMealComponents = [{
+                    ingredient: targetRecord.description, weight: 100,
+                    calories: targetRecord.totals.c, protein: targetRecord.totals.p,
+                    fat: targetRecord.totals.f, carbs: targetRecord.totals.ch, fiber: targetRecord.totals.fiber || 0
+                }];
+            }
+
+            document.getElementById('editArea').style.display = 'block';
+            document.getElementById('editAreaTitle').innerText = `📝 Изменение записи от [${targetRecord.time}]`;
+            
+            document.getElementById('formTitle').innerText = "🔄 Редактируется архивное блюдо";
+            document.getElementById('uploadFormGroup').style.display = 'none';
+            document.getElementById('hintFormGroup').style.display = 'none';
+            document.getElementById('analyzeBtn').style.display = 'none';
+
+            calculateAndRender();
+            window.scrollTo({ top: document.getElementById('editArea').offsetTop - 20, behavior: 'smooth' });
+        }
+
+        function saveToDatabase() {
+            if (!globalMealsArchive[activeDate]) {
+                globalMealsArchive[activeDate] = [];
+            }
+
+            if (editingRecordId !== null) {
+                const recordIndex = globalMealsArchive[activeDate].findIndex(item => item.id === editingRecordId);
+                if (recordIndex !== -1) {
+                    globalMealsArchive[activeDate][recordIndex].totals = currentMealComponents.finalTotals;
+                    globalMealsArchive[activeDate][recordIndex].description = currentMealComponents.map(i => `${i.ingredient} (${i.weight}г)`).join(', ');
+                    globalMealsArchive[activeDate][recordIndex].rawComponents = currentMealComponents;
+                }
+            } else {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const savedRecord = {
+                    id: Date.now(),
+                    time: timeString,
+                    totals: currentMealComponents.finalTotals,
+                    description: currentMealComponents.map(i => `${i.ingredient} (${i.weight}г)`).join(', '),
+                    rawComponents: currentMealComponents
+                };
+                globalMealsArchive[activeDate].push(savedRecord);
+            }
+
+            localStorage.setItem('mealsGlobalArchive', JSON.stringify(globalMealsArchive));
+            resetFormState();
+            refreshDayView();
+        }
+
+        function resetFormState() {
+            editingRecordId = null;
+            base64ImageString = "";
+            document.getElementById('editArea').style.display = 'none';
+            document.getElementById('imageInput').value = '';
+            document.getElementById('userHint').value = '';
+            document.getElementById('previewBox').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('uploadText').style.display = 'block';
+            
+            document.getElementById('formTitle').innerText = "📷 Анализ нового блюда";
+            document.getElementById('uploadFormGroup').style.display = 'block';
+            document.getElementById('hintFormGroup').style.display = 'block';
+            document.getElementById('analyzeBtn').style.display = 'block';
+        }
+
+        function deleteMeal(id) {
+            if (globalMealsArchive[activeDate]) {
+                globalMealsArchive[activeDate] = globalMealsArchive[activeDate].filter(item => item.id !== id);
+                if (globalMealsArchive[activeDate].length === 0) delete globalMealsArchive[activeDate];
+                localStorage.setItem('mealsGlobalArchive', JSON.stringify(globalMealsArchive));
+                if (editingRecordId === id) resetFormState();
+                refreshDayView();
+            }
+        }
+
+        function renderHistoryLog() {
+            const logBox = document.getElementById('historyLog');
+            const dayMeals = globalMealsArchive[activeDate] || [];
+
+            if (dayMeals.length === 0) {
+                logBox.innerHTML = `Дневник на ${formatDateString(activeDate)} пуст.`;
+                return;
+            }
+
+            logBox.innerHTML = dayMeals.map(item => `
+                <div class="history-item" style="${editingRecordId === item.id ? 'border-left-color: #f39c12; background: #fffcf5;' : ''}">
+                    <div class="history-header">
+                        <span>Время записи: <b>${item.time}</b></span>
+                        ${editingRecordId === item.id ? '<span style="color:#f39c12; font-weight:bold;">Редактируется...</span>' : ''}
+                    </div>
+                    <div class="history-details"><strong>Состав:</strong> ${item.description}</div>
+                    <div class="history-macros">
+                        <span>🔥 <b>${item.totals.c} ккал</b></span>
+                        <span>Б: ${item.totals.p}г</span>
+                        <span>Ж: ${item.totals.f}г</span>
+                        <span>У: ${item.totals.ch}г</span>
+                        <span class="fiber-badge">🌾 Клетч: ${item.totals.fiber || 0}г</span>
+                    </div>
+                    <div class="action-btns">
+                        <button class="edit-btn" onclick="editMealFromArchive(${item.id})">Изменить</button>
+                        <button class="delete-btn" onclick="deleteMeal(${item.id})">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
