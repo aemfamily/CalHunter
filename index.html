@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>SmartNutri — Дневник КБЖУ с реальным ИИ</title>
+    <title>SmartNutri — Стабильный Дневник КБЖУ</title>
     <link rel="apple-touch-icon" href="https://placehold.co/180x180/2ecc71/ffffff?text=SN">
     <style>
         :root {
@@ -81,7 +81,7 @@
         th { background: #f8fafc; font-weight: 600; color: #64748b; }
 
         .table-input-text { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
-        .table-input-num { width: 60px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-size: 14px; }
+        .table-input-num { width: 65px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-size: 14px; }
         
         .total-box { background: var(--accent); padding: 20px; border-radius: 12px; margin-top: 20px; font-size: 15px; color: var(--accent-text); }
         .day-summary-box { background: var(--summary-bg); padding: 20px; border-radius: 12px; margin-bottom: 5px; color: var(--summary-text); border: 1px solid var(--summary-border); }
@@ -114,7 +114,7 @@
 
     <header>
         <h1>SmartNutri — Умный Дневник Питания</h1>
-        <p>Настоящий ИИ-анализ КБЖУ и клетчатки по фото с возможностью редактирования</p>
+        <p>ИИ-анализ по фото с оптимизацией веса изображений для iOS и быстрым пересчетом</p>
     </header>
 
     <div class="card">
@@ -205,7 +205,7 @@
         let activeDate = "";
         let editingRecordId = null;
         let base64ImageString = ""; 
-        let imageMimeType = "";
+        let imageMimeType = "image/jpeg"; // по умолчанию сжимаем в jpeg
 
         window.onload = function() {
             const today = new Date();
@@ -240,36 +240,69 @@
             return `${parts[2]}.${parts[1]}.${parts[0]}`;
         }
 
+        // МОДИФИЦИРОВАННАЯ ФУНКЦИЯ: Чтение и авто-сжатие картинок на лету
         function handleFileSelect(input) {
             const file = input.files[0];
-            if (file) {
-                imageMimeType = file.type;
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.getElementById('imagePreview');
-                    img.src = e.target.result;
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // Создаем виртуальный Canvas для ресайза
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1024;
+                    const MAX_HEIGHT = 1024;
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Рассчитываем новые пропорции, если фото слишком большое
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Конвертируем в сжатый JPEG (качество 0.8 оптимально для ИИ)
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // Обновляем превью на экране
+                    const previewImg = document.getElementById('imagePreview');
+                    previewImg.src = compressedDataUrl;
                     document.getElementById('previewBox').style.display = 'block';
                     document.getElementById('uploadText').style.display = 'none';
                     
-                    // Вырезаем технический префикс для API запроса
-                    base64ImageString = e.target.result.split(',')[1];
-                }
-                reader.readAsDataURL(file);
-            }
+                    // Записываем чистый base64 для отправки в Gemini
+                    base64ImageString = compressedDataUrl.split(',')[1];
+                    imageMimeType = "image/jpeg";
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
-        // НАСТОЯЩИЙ ИИ ЗАПРОС К GEMINI API
         async function analyzeFoodImage() {
             const fileInput = document.getElementById('imageInput');
             const userHint = document.getElementById('userHint').value;
 
             if (!fileInput.files[0] || !base64ImageString) {
-                alert("Пожалуйста, сначала выберите или загрузите фото блюда.");
+                alert("Пожалуйста, выберите или сфотографируйте блюдо.");
                 return;
             }
 
             if (GEMINI_API_KEY === "ВАШ_API_КЛЮЧ" || !GEMINI_API_KEY) {
-                alert("Внимание! Вы не указали ваш личный GEMINI_API_KEY в коде скрипта. Без ключа анализ по фото работать не будет.");
+                alert("Укажите ваш GEMINI_API_KEY в коде скрипта.");
                 return;
             }
 
@@ -277,7 +310,6 @@
             document.getElementById('editArea').style.display = 'none';
             editingRecordId = null;
 
-            // Формируем строгий системный промпт для гарантированного получения чистого JSON
             const promptText = `Ты — профессиональный ИИ-нутрициолог. Проанализируй изображение еды. 
             Определи все отдельные компоненты, ингредиенты блюда, оцени их примерный вес в граммах на основе визуального объема. 
             Вычисли калории (calories), белки (protein), жиры (fat), углеводы (carbs) и обязательно клетчатку (fiber) для каждого компонента.
@@ -303,17 +335,24 @@
                 });
 
                 const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error?.message || "Ошибка запроса к API");
-                }
+                if (!response.ok) throw new Error(data.error?.message || "Ошибка запроса к API");
 
                 let responseText = data.candidates[0].content.parts[0].text.trim();
-                
-                // Очистка ответа от возможных markdown-тегов ```json ... ```
                 responseText = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
                 
-                currentMealComponents = JSON.parse(responseText);
+                const rawComponents = JSON.parse(responseText);
+
+                currentMealComponents = rawComponents.map(item => {
+                    const w = Number(item.weight) || 100;
+                    return {
+                        ...item,
+                        baseCaloriesPerGram: Number(item.calories) / w,
+                        baseProteinPerGram: Number(item.protein) / w,
+                        baseFatPerGram: Number(item.fat) / w,
+                        baseCarbsPerGram: Number(item.carbs) / w,
+                        baseFiberPerGram: Number(item.fiber || 0) / w
+                    };
+                });
 
                 document.getElementById('loadingText').style.display = 'none';
                 document.getElementById('editArea').style.display = 'block';
@@ -323,7 +362,7 @@
 
             } catch (error) {
                 document.getElementById('loadingText').style.display = 'none';
-                alert("Ошибка распознавания ИИ: " + error.message + "\nПроверьте API-ключ или подсказку.");
+                alert("Ошибка распознавания ИИ: " + error.message);
                 console.error(error);
             }
         }
@@ -344,12 +383,12 @@
                 body.innerHTML += `
                     <tr>
                         <td><input type="text" class="table-input-text" value="${item.ingredient}" oninput="updateComponentProperty(${index}, 'ingredient', this.value)"></td>
-                        <td><input type="number" class="table-input-num" value="${item.weight}" oninput="updateComponentProperty(${index}, 'weight', this.value)"></td>
-                        <td><input type="number" class="table-input-num" value="${item.calories}" oninput="updateComponentProperty(${index}, 'calories', this.value)"></td>
-                        <td><input type="number" class="table-input-num" step="0.1" value="${item.protein}" oninput="updateComponentProperty(${index}, 'protein', this.value)"></td>
-                        <td><input type="number" class="table-input-num" step="0.1" value="${item.fat}" oninput="updateComponentProperty(${index}, 'fat', this.value)"></td>
-                        <td><input type="number" class="table-input-num" step="0.1" value="${item.carbs}" oninput="updateComponentProperty(${index}, 'carbs', this.value)"></td>
-                        <td><input type="number" class="table-input-num" step="0.1" value="${item.fiber || 0}" oninput="updateComponentProperty(${index}, 'fiber', this.value)"></td>
+                        <td><input type="number" class="table-input-num" value="${item.weight}" oninput="updateComponentWeight(${index}, this.value)"></td>
+                        <td><input type="number" class="table-input-num" value="${Math.round(item.calories)}" oninput="updateComponentProperty(${index}, 'calories', this.value)"></td>
+                        <td><input type="number" class="table-input-num" step="0.1" value="${Number(item.protein).toFixed(1)}" oninput="updateComponentProperty(${index}, 'protein', this.value)"></td>
+                        <td><input type="number" class="table-input-num" step="0.1" value="${Number(item.fat).toFixed(1)}" oninput="updateComponentProperty(${index}, 'fat', this.value)"></td>
+                        <td><input type="number" class="table-input-num" step="0.1" value="${Number(item.carbs).toFixed(1)}" oninput="updateComponentProperty(${index}, 'carbs', this.value)"></td>
+                        <td><input type="number" class="table-input-num" step="0.1" value="${Number(item.fiber || 0).toFixed(1)}" oninput="updateComponentProperty(${index}, 'fiber', this.value)"></td>
                     </tr>
                 `;
             });
@@ -365,13 +404,49 @@
             };
         }
 
+        function updateComponentWeight(index, newWeightValue) {
+            if (newWeightValue === '' || Number(newWeightValue) < 0) return;
+            
+            const newWeight = Number(newWeightValue);
+            const item = currentMealComponents[index];
+
+            if (item.baseCaloriesPerGram === undefined) {
+                const currentW = Number(item.weight) || 100;
+                item.baseCaloriesPerGram = Number(item.calories) / currentW;
+                item.baseProteinPerGram = Number(item.protein) / currentW;
+                item.baseFatPerGram = Number(item.fat) / currentW;
+                item.baseCarbsPerGram = Number(item.carbs) / currentW;
+                item.baseFiberPerGram = Number(item.fiber || 0) / currentW;
+            }
+
+            item.weight = newWeight;
+            item.calories = item.baseCaloriesPerGram * newWeight;
+            item.protein = item.baseProteinPerGram * newWeight;
+            item.fat = item.baseFatPerGram * newWeight;
+            item.carbs = item.baseCarbsPerGram * newWeight;
+            item.fiber = item.baseFiberPerGram * newWeight;
+
+            recalculateTotalsOnly();
+            calculateAndRender();
+        }
+
         function updateComponentProperty(index, property, newValue) {
             if (property === 'ingredient') {
                 currentMealComponents[index][property] = newValue;
-            } else {
-                if (newValue === '') return;
-                currentMealComponents[index][property] = Number(newValue);
-            }
+                return;
+            } 
+            if (newValue === '') return;
+            
+            currentMealComponents[index][property] = Number(newValue);
+            
+            const item = currentMealComponents[index];
+            const currentW = Number(item.weight) || 100;
+            if (property === 'calories') item.baseCaloriesPerGram = item.calories / currentW;
+            if (property === 'protein') item.baseProteinPerGram = item.protein / currentW;
+            if (property === 'fat') item.baseFatPerGram = item.fat / currentW;
+            if (property === 'carbs') item.baseCarbsPerGram = item.carbs / currentW;
+            if (property === 'fiber') item.baseFiberPerGram = item.fiber / currentW;
+
             recalculateTotalsOnly();
         }
 
@@ -425,7 +500,7 @@
                 currentMealComponents = JSON.parse(JSON.stringify(targetRecord.rawComponents));
             } else {
                 currentMealComponents = [{
-                    ingredient: targetRecord.description, weight: 0,
+                    ingredient: targetRecord.description, weight: 100,
                     calories: targetRecord.totals.c, protein: targetRecord.totals.p,
                     fat: targetRecord.totals.f, carbs: targetRecord.totals.ch, fiber: targetRecord.totals.fiber || 0
                 }];
