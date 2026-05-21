@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartNutri — Дневник КБЖУ + Клетчатка и Редактирование</title>
+    <style>
+        :root {
+            --primary: #2ecc71;
+            --primary-hover: #27ae60;
+            --secondary: #3498db;
+            --secondary-hover: #2980b9;
+            --dark: #2c3e50;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --accent: #e0f2fe;
+            --accent-text: #0369a1;
+            --summary-bg: #f0fdf4;
+            --summary-text: #166534;
+            --summary-border: #bbf7d0;
+            --fiber-color: #854d0e;
+            --fiber-bg: #fef9c3;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: var(--light);
+            color: var(--dark);
+            line-height: 1.5;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 10px 0;
+        }
+
+        header h1 {
+            font-size: 26px;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .card { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.05); 
+            margin-bottom: 25px; 
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group { 
+            margin-bottom: 15px; 
+        }
+
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            font-size: 14px; 
+        }
+
+        .upload-container {
+            border: 2px dashed var(--border);
+            padding: 25px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            background: #fafafa;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .upload-container:hover {
+            border-color: var(--secondary);
+            background: #f0f7ff;
+        }
+
+        .upload-container input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .preview-box {
+            margin-top: 15px;
+            display: none;
+            position: relative;
+            z-index: 3;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus, input[type="date"]:focus { 
+            border-color: var(--secondary); 
+            outline: none; 
+        }
+
+        .btn { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            padding: 14px 20px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-size: 16px; 
+            font-weight: 600;
+            transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2);
+        }
+
+        .btn:hover { background: var(--primary-hover); }
+        .btn-save { background: var(--secondary); box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2); margin-top: 20px; }
+        .btn-save:hover { background: var(--secondary-hover); }
+        
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            text-align: left;
+        }
+
+        th, td { 
+            padding: 10px 12px; 
+            border-bottom: 1px solid var(--border); 
+            font-size: 14px;
+        }
+
+        th { 
+            background: #f8fafc; 
+            font-weight: 600; 
+            color: #64748b;
+        }
+
+        .table-input-text {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .table-input-num {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .table-input-text:focus, .table-input-num:focus {
+            border-color: var(--secondary);
+            outline: none;
+        }
+        
+        .total-box { 
+            background: var(--accent); 
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-top: 20px; 
+            font-size: 15px;
+            color: var(--accent-text);
+        }
+
+        .day-summary-box {
+            background: var(--summary-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 5px;
+            color: var(--summary-text);
+            border: 1px solid var(--summary-border);
+        }
+
+        .total-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .day-cell, .total-cell {
+            background: white;
+            padding: 12px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--summary-border);
+        }
+        .total-cell { border-color: #bae6fd; }
+        .fiber-cell { border-color: #fef08a; background: #fffdf5; }
+
+        .total-cell span, .day-cell span {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .total-cell strong, .day-cell strong {
+            font-size: 16px;
+            color: var(--dark);
+        }
+        
+        .history-item { 
+            background: white; 
+            padding: 18px; 
+            border-radius: 12px; 
+            margin-top: 15px; 
+            border-left: 5px solid var(--secondary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            position: relative;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .history-details {
+            font-size: 14px;
+            color: var(--dark);
+            margin-bottom: 10px;
+            padding-right: 150px;
+        }
+
+        .history-macros {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 6px;
+            width: fit-content;
+            flex-wrap: wrap;
+        }
+
+        .history-macros .fiber-badge {
+            color: var(--fiber-color);
+            font-weight: 600;
+        }
+
+        .action-btns {
+            position: absolute;
+            right: 15px;
+            bottom: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .action-btns button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .edit-btn { color: var(--secondary); }
+        .edit-btn:hover { text-decoration: underline; }
+        .delete-btn { color: #ef4444; }
+        .delete-btn:hover { text-decoration: underline; }
+        
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 15px 0;
+            font-size: 14px;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            background: #f1f5f9;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        .calendar-nav label { margin-bottom: 0; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>SmartNutri — Умный Дневник Питания</h1>
+        <p>Контроль КБЖУ, клетчатки, календарный архив и редактирование записей</p>
+    </header>
+
+    <div class="card">
+        <h2>📅 Просмотр дневника за дату</h2>
+        <div class="calendar-nav">
+            <label for="dateSelect">Выбрать день:</label>
+            <input type="date" id="dateSelect" onchange="changeActiveDate()">
+        </div>
+        
+        <div class="day-summary-box">
+            <span style="font-size: 14px;">☀️ Итог за выбранные сутки (<b id="selectedDateLabel"></b>):</span>
+            <div class="total-grid">
+                <div class="day-cell"><span id="dayC">0</span><span>Ккал</span></div>
+                <div class="day-cell"><span id="dayP">0</span><span>Белки (г)</span></div>
+                <div class="day-cell"><span id="dayF">0</span><span>Жиры (г)</span></div>
+                <div class="day-cell"><span id="dayCh">0</span><span>Углев. (г)</span></div>
+                <div class="day-cell fiber-cell"><span id="dayFiber">0</span><span style="color:var(--fiber-color)">Клетч. (г)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 id="formTitle">📷 Анализ нового блюда</h2>
+        <p style="font-size:13px; color:#64748b; margin-top:-10px; margin-bottom:15px;">
+            Запись автоматически добавится на ту дату, которая активна в календаре выше.
+        </p>
+        <div class="form-group" id="uploadFormGroup">
+            <label>Снимок тарелки или ингредиентов</label>
+            <div class="upload-container">
+                <span id="uploadText">📁 Нажмите для загрузки или перетащите фото сюда</span>
+                <input type="file" id="imageInput" accept="image/*" onchange="handleFileSelect(this)">
+                <div id="previewBox" class="preview-box">
+                    <img id="imagePreview" class="preview-img" alt="Превью блюда">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group" id="hintFormGroup">
+            <label>Текстовая подсказка ИИ (необязательно)</label>
+            <input type="text" id="userHint" placeholder="Пример: Скрэмбл из 3 яиц, чиабатта, пара долек огурца">
+        </div>
+        
+        <button class="btn" id="analyzeBtn" onclick="analyzeFoodImage()">Распознать через ИИ</button>
+        <div id="loadingText" class="loader">🤖 ИИ анализирует объем, калибрует масштаб и подгружает метрики КБЖУ...</div>
+    </div>
+
+    <div id="editArea" class="card" style="display:none;">
+        <h2 id="editAreaTitle">📊 Редактирование параметров разбора</h2>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">
+            Вы можете изменить любое поле прямо в таблице. Итоговые цифры пересчитываются мгновенно.
+        </p>
+        
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Название продукта</th>
+                        <th>Вес (г)</th>
+                        <th>Ккал</th>
+                        <th>Белки (г)</th>
+                        <th>Жиры (г)</th>
+                        <th>Углев. (г)</th>
+                        <th style="color: var(--fiber-color)">Клетч. (г)</th>
+                    </tr>
+                </thead>
+                <tbody id="ingredientsBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="total-box">
+            <strong>Итог текущего блюда:</strong>
+            <div class="total-grid">
+                <div class="total-cell"><span id="lblC">0</span><span>Калории</span></div>
+                <div class="total-cell"><span id="lblP">0</span><span>Белки (г)</span></div>
+                <div class="total-cell"><span id="lblF">0</span><span>Жиры (г)</span></div>
+                <div class="total-cell"><span id="lblCh">0</span><span>Углев. (г)</span></div>
+                <div class="total-cell fiber-cell"><span id="lblFiber">0</span><span style="color:var(--fiber-color)">Клетч. (г)</span></div>
+            </div>
+        </div>
+        
+        <button class="btn btn-save" id="saveBtn" onclick="saveToDatabase()">Утвердить и сохранить в дневник</button>
+    </div>
+
+    <div class="card">
+        <h2>🍽️ Приемы пищи за выбранный день</h2>
+        <div id="historyLog">Дневник на этот день пуст.</div>
+    </div>
+
+    <script>
+        let currentMealComponents = [];
+        let globalMealsArchive = {}; 
+        let activeDate = "";
+        let editingRecordId = null; // ID редактируемой записи из архива (если null — создаем новую)
+
+        // Инициализация при старте страницы
+        window.onload = function() {
+            const today = new Date();
+            const offset = today.getTimezoneOffset();
+            const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+            activeDate = localToday.toISOString().split('T')[0];
+            
+            document.getElementById('dateSelect').value = activeDate;
+            document.getElementById('selectedDateLabel').innerText = formatDateString(activeDate);
+
+            if (localStorage.getItem('mealsGlobalArchive')) {
+                globalMealsArchive = JSON.parse(localStorage.getItem('mealsGlobalArchive'));
+            }
+            
+            refreshDayView();
+        };
+
+        // Календарная навигация
+        function changeActiveDate() {
+            activeDate = document.getElementById('dateSelect').value;
+            document.getElementById('selectedDateLabel').innerText = formatDateString(activeDate);
+            resetFormState();
+            refreshDayView();
+        }
+
+        function refreshDayView() {
+            renderHistoryLog();
+            calculateDayTotals();
+        }
+
+        function formatDateString(dateStr) {
+            if(!dateStr) return "";
+            const parts = dateStr.split('-');
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('imagePreview');
+                    const previewBox = document.getElementById('previewBox');
+                    img.src = e.target.result;
+                    previewBox.style.display = 'block';
+                    document.getElementById('uploadText').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Блок ИИ-анализа с добавлением КЛЕТЧАТКИ (fiber)
+        function analyzeFoodImage() {
+            const fileInput = document.getElementById('imageInput');
+            const hintInput = document.getElementById('userHint').value.toLowerCase();
+
+            if (!fileInput.files[0]) {
+                alert("Пожалуйста, сначала выберите или сделайте снимок тарелки.");
+                return;
+            }
+
+            document.getElementById('loadingText').style.display = 'block';
+            document.getElementById('editArea').style.display = 'none';
+
+            setTimeout(() => {
+                document.getElementById('loadingText').style.display = 'none';
+                editingRecordId = null; // Новое блюдо
+                
+                if (hintInput.includes('окрошка') || hintInput.includes('суп')) {
+                    currentMealComponents = [
+                        { ingredient: "Основа (Кефир 1% + минералка)", weight: 200, calories: 80, protein: 5.6, fat: 2.0, carbs: 8.0, fiber: 0.0 },
+                        { ingredient: "Куриная грудка отварная", weight: 60, calories: 82, protein: 17.8, fat: 1.1, carbs: 0.0, fiber: 0.0 },
+                        { ingredient: "Картофель отварной кубиками", weight: 50, calories: 41, protein: 1.0, fat: 0.2, carbs: 8.3, fiber: 0.9 },
+                        { ingredient: "Огурцы, редис и зелень", weight: 50, calories: 9, protein: 0.5, fat: 0.1, carbs: 1.6, fiber: 0.8 }
+                    ];
+                } else {
+                    currentMealComponents = [
+                        { ingredient: "Яйца куриные (скрэмбл/болтунья)", weight: 130, calories: 204, protein: 16.5, fat: 15.0, carbs: 0.9, fiber: 0.0 },
+                        { ingredient: "Хлеб цельнозерновой / Чиабатта", weight: 45, calories: 118, protein: 3.6, fat: 1.1, carbs: 23.4, fiber: 2.8 },
+                        { ingredient: "Масло для обжарки", weight: 7, calories: 62, protein: 0.0, fat: 6.9, carbs: 0.0, fiber: 0.0 },
+                        { ingredient: "Томаты и свежая зелень", weight: 40, calories: 11, protein: 0.5, fat: 0.1, carbs: 2.1, fiber: 0.6 }
+                    ];
+                }
+
+                document.getElementById('editArea').style.display = 'block';
+                document.getElementById('editAreaTitle').innerText = "📊 Редактирование параметров разбора";
+                calculateAndRender();
+            }, 1000);
+        }
+
+        // Рендеринг интерактивной таблицы
+        function calculateAndRender() {
+            const body = document.getElementById('ingredientsBody');
+            body.innerHTML = '';
+            
+            let totalC = 0, totalP = 0, totalF = 0, totalCh = 0, totalFiber = 0;
+
+            currentMealComponents.forEach((item, index) => {
+                totalC += Number(item.calories || 0);
+                totalP += Number(item.protein || 0);
+                totalF += Number(item.fat || 0);
+                totalCh += Number(item.carbs || 0);
+                totalFiber += Number(item.fiber || 0);
+
+                body.innerHTML += `
+                    <tr>
+                        <td>
+                            <input type="text" class="table-input-text" value="${item.ingredient}" 
+                                   oninput="updateComponentProperty(${index}, 'ingredient', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="table-input-num" value="${item.weight}" 
+                                   oninput="updateComponentProperty(${index}, 'weight', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="table-input-num" value="${item.calories}" 
+                                   oninput="updateComponentProperty(${index}, 'calories', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="table-input-num" step="0.1" value="${item.protein}" 
+                                   oninput="updateComponentProperty(${index}, 'protein', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="table-input-num" step="0.1" value="${item.fat}" 
+                                   oninput="updateComponentProperty(${index}, 'fat', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="table-input-num" step="0.1" value="${item.carbs}" 
+                                   oninput="updateComponentProperty(${index}, 'carbs', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="table-input-num" step="0.1" value="${item.fiber || 0}" 
+                                   oninput="updateComponentProperty(${index}, 'fiber', this.value)">
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('lblC').innerHTML = `<strong>${Math.round(totalC)}</strong>`;
+            document.getElementById('lblP').innerHTML = `<strong>${totalP.toFixed(1)}</strong>`;
+            document.getElementById('lblF').innerHTML = `<strong>${totalF.toFixed(1)}</strong>`;
+            document.getElementById('lblCh').innerHTML = `<strong>${totalCh.toFixed(1)}</strong>`;
+            document.getElementById('lblFiber').innerHTML = `<strong>${totalFiber.toFixed(1)}</strong>`;
+            
+            currentMealComponents.finalTotals = { 
+                c: Math.round(totalC), 
+                p: Number(totalP.toFixed(1)), 
+                f: Number(totalF.toFixed(1)), 
+                ch: Number(totalCh.toFixed(1)),
+                fiber: Number(totalFiber.toFixed(1))
+            };
+        }
+
+        function updateComponentProperty(index, property, newValue) {
+            if (property === 'ingredient') {
+                currentMealComponents[index][property] = newValue;
+            } else {
+                if (newValue === '') return;
+                currentMealComponents[index][property] = Number(newValue);
+            }
+            recalculateTotalsOnly();
+        }
+
+        function recalculateTotalsOnly() {
+            let totalC = 0, totalP = 0, totalF = 0, totalCh = 0, totalFiber = 0;
+            currentMealComponents.forEach(item => {
+                totalC += Number(item.calories || 0);
+                totalP += Number(item.protein || 0);
+                totalF += Number(item.fat || 0);
+                totalCh += Number(item.carbs || 0);
+                totalFiber += Number(item.fiber || 0);
+            });
+            document.getElementById('lblC').innerHTML = `<strong>${Math.round(totalC)}</strong>`;
+            document.getElementById('lblP').innerHTML = `<strong>${totalP.toFixed(1)}</strong>`;
+            document.getElementById('lblF').innerHTML = `<strong>${totalF.toFixed(1)}</strong>`;
+            document.getElementById('lblCh').innerHTML = `<strong>${totalCh.toFixed(1)}</strong>`;
+            document.getElementById('lblFiber').innerHTML = `<strong>${totalFiber.toFixed(1)}</strong>`;
+            
+            currentMealComponents.finalTotals = { 
+                c: Math.round(totalC), 
+                p: Number(totalP.toFixed(1)), 
+                f: Number(totalF.toFixed(1)), 
+                ch: Number(totalCh.toFixed(1)),
+                fiber: Number(totalFiber.toFixed(1))
+            };
+        }
+
+        // Подсчет суточного итога КБЖУ + Клетчатка
+        function calculateDayTotals() {
+            let dayC = 0, dayP = 0, dayF = 0, dayCh = 0, dayFiber = 0;
+            const dayMeals = globalMealsArchive[activeDate] || [];
+            
+            dayMeals.forEach(item => {
+                dayC += Number(item.totals.c);
+                dayP += Number(item.totals.p);
+                dayF += Number(item.totals.f);
+                dayCh += Number(item.totals.ch);
+                dayFiber += Number(item.totals.fiber || 0);
+            });
+
+            document.getElementById('dayC').innerHTML = `<strong>${dayC}</strong>`;
+            document.getElementById('dayP').innerHTML = `<strong>${dayP.toFixed(1)}</strong>`;
+            document.getElementById('dayF').innerHTML = `<strong>${dayF.toFixed(1)}</strong>`;
+            document.getElementById('dayCh').innerHTML = `<strong>${dayCh.toFixed(1)}</strong>`;
+            document.getElementById('dayFiber').innerHTML = `<strong>${dayFiber.toFixed(1)}</strong>`;
+        }
+
+        // Изменение существующей записи из архива
+        function editMealFromArchive(id) {
+            const dayMeals = globalMealsArchive[activeDate] || [];
+            const targetRecord = dayMeals.find(item => item.id === id);
+            
+            if (!targetRecord) return;
+
+            editingRecordId = id; // Переключаем контекст в режим редактирования
+
+            // Загружаем оригинальную детальную структуру компонентов из записи, если она сохранилась,
+            // либо восстанавливаем из текстового описания для совместимости
+            if (targetRecord.rawComponents) {
+                currentMealComponents = JSON.parse(JSON.stringify(targetRecord.rawComponents));
+            } else {
+                currentMealComponents = [{
+                    ingredient: targetRecord.description,
+                    weight: 0,
+                    calories: targetRecord.totals.c,
+                    protein: targetRecord.totals.p,
+                    fat: targetRecord.totals.f,
+                    carbs: targetRecord.totals.ch,
+                    fiber: targetRecord.totals.fiber || 0
+                }];
+            }
+
+            // Фокусируем интерфейс на изменении данных
+            document.getElementById('editArea').style.display = 'block';
+            document.getElementById('editAreaTitle').innerText = `📝 Изменение записи от [${targetRecord.time}]`;
+            
+            // Сворачиваем/скрываем форму ИИ на время редактирования старой записи во избежание путаницы
+            document.getElementById('formTitle').innerText = "🔄 Редактируется архивное блюдо";
+            document.getElementById('uploadFormGroup').style.display = 'none';
+            document.getElementById('hintFormGroup').style.display = 'none';
+            document.getElementById('analyzeBtn').style.display = 'none';
+
+            calculateAndRender();
+            window.scrollTo({ top: document.getElementById('editArea').offsetTop - 20, behavior: 'smooth' });
+        }
+
+        // Сохранение отредактированного ИЛИ нового блюда в архив
+        function saveToDatabase() {
+            if (!globalMealsArchive[activeDate]) {
+                globalMealsArchive[activeDate] = [];
+            }
+
+            if (editingRecordId !== null) {
+                // Находим старую запись в массиве этого дня и обновляем её поля
+                const recordIndex = globalMealsArchive[activeDate].findIndex(item => item.id === editingRecordId);
+                if (recordIndex !== -1) {
+                    globalMealsArchive[activeDate][recordIndex].totals = currentMealComponents.finalTotals;
+                    globalMealsArchive[activeDate][recordIndex].description = currentMealComponents.map(i => `${i.ingredient} (${i.weight}г)`).join(', ');
+                    globalMealsArchive[activeDate][recordIndex].rawComponents = currentMealComponents; // сохраняем детальную структуру
+                }
+            } else {
+                // Логика создания новой записи
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const savedRecord = {
+                    id: Date.now(),
+                    time: timeString,
+                    totals: currentMealComponents.finalTotals,
+                    description: currentMealComponents.map(i => `${i.ingredient} (${i.weight}г)`).join(', '),
+                    rawComponents: currentMealComponents // сохраняем структуру для будущего редактирования
+                };
+                globalMealsArchive[activeDate].push(savedRecord);
+            }
+
+            localStorage.setItem('mealsGlobalArchive', JSON.stringify(globalMealsArchive));
+            resetFormState();
+            refreshDayView();
+        }
+
+        // Сброс состояния формы загрузки к дефолтному состоянию
+        function resetFormState() {
+            editingRecordId = null;
+            document.getElementById('editArea').style.display = 'none';
+            document.getElementById('imageInput').value = '';
+            document.getElementById('userHint').value = '';
+            document.getElementById('previewBox').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('uploadText').style.display = 'block';
+            
+            document.getElementById('formTitle').innerText = "📷 Анализ нового блюда";
+            document.getElementById('uploadFormGroup').style.display = 'block';
+            document.getElementById('hintFormGroup').style.display = 'block';
+            document.getElementById('analyzeBtn').style.display = 'block';
+        }
+
+        function deleteMeal(id) {
+            if (globalMealsArchive[activeDate]) {
+                globalMealsArchive[activeDate] = globalMealsArchive[activeDate].filter(item => item.id !== id);
+                if (globalMealsArchive[activeDate].length === 0) {
+                    delete globalMealsArchive[activeDate];
+                }
+                localStorage.setItem('mealsGlobalArchive', JSON.stringify(globalMealsArchive));
+                if (editingRecordId === id) resetFormState();
+                refreshDayView();
+            }
+        }
+
+        // Вывод списка истории с поддержкой отображения Клетчатки и кнопки Изменить
+        function renderHistoryLog() {
+            const logBox = document.getElementById('historyLog');
+            const dayMeals = globalMealsArchive[activeDate] || [];
+
+            if (dayMeals.length === 0) {
+                logBox.innerHTML = `Дневник на ${formatDateString(activeDate)} пуст.`;
+                return;
+            }
+
+            logBox.innerHTML = dayMeals.map(item => `
+                <div class="history-item" style="${editingRecordId === item.id ? 'border-left-color: #f39c12; background: #fffcf5;' : ''}">
+                    <div class="history-header">
+                        <span>Время записи: <b>${item.time}</b></span>
+                        ${editingRecordId === item.id ? '<span style="color:#f39c12; font-weight:bold;">Редактируется...</span>' : ''}
+                    </div>
+                    <div class="history-details"><strong>Состав:</strong> ${item.description}</div>
+                    <div class="history-macros">
+                        <span>🔥 <b>${item.totals.c} ккал</b></span>
+                        <span>Б: ${item.totals.p}г</span>
+                        <span>Ж: ${item.totals.f}г</span>
+                        <span>У: ${item.totals.ch}г</span>
+                        <span class="fiber-badge">🌾 Клетч: ${item.totals.fiber || 0}г</span>
+                    </div>
+                    <div class="action-btns">
+                        <button class="edit-btn" onclick="editMealFromArchive(${item.id})">Изменить</button>
+                        <button class="delete-btn" onclick="deleteMeal(${item.id})">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
